@@ -257,7 +257,10 @@ document.getElementById("esppForm")?.addEventListener("submit", (event) => {
         <p class="font-bold">Total Profit/Loss: ${handleNegative(
           result.totalProfit
         )}</p>
-      `;
+        <p class="font-bold">Percentage Gain/Loss on Investment: ${handleNegative(
+          result.percentageGainLossOnInvestment
+        )}%</p>
+`;
     }
 
     if (resultsDiv) {

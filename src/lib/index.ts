@@ -1,19 +1,19 @@
 import { z } from "zod";
 
 export const ESPPInputSchema = z.object({
-  marketValuePurchaseDate: z.number().positive("Market value must be positive"),
+  marketValuePurchaseDate: z.number().min(0, "Market value must be positive"),
   discountPercent: z
     .number()
-    .min(0)
-    .max(100, "Discount percent must be between 0 and 100"),
-  purchaseAmount: z.number().positive("Purchase amount must be positive"),
+    .min(0, "Discount percent must be between 0 and 100")
+    .max(99.99, "Discount percent must be less than 100"), // Enforce less than 100
+  purchaseAmount: z.number().min(0, "Purchase amount must be positive"),
   marketValueSaleDate: z
     .number()
-    .positive("Market value at sale must be positive"),
+    .min(0, "Market value at sale must be positive"),
   taxRatePercent: z
     .number()
     .min(0)
-    .max(100, "Tax rate percent must be between 0 and 100"),
+    .max(100, "Tax rate must be between 0 and 100"),
 });
 
 export const ESPPOutputSchema = z.object({
@@ -27,6 +27,7 @@ export const ESPPOutputSchema = z.object({
   amountTaxableAsIncome: z.number(),
   totalTax: z.number(),
   totalProfit: z.number(),
+  percentageGainLossOnInvestment: z.number(),
 });
 
 export type ESPPInput = z.infer<typeof ESPPInputSchema>;
@@ -43,27 +44,23 @@ export function calculateESPP(input: ESPPInput): ESPPOutput {
     taxRatePercent,
   } = input;
 
-  const discountPerShare = +(
-    marketValuePurchaseDate *
-    (discountPercent / 100)
-  ).toFixed(2);
-  const purchasePricePerShare = +(
-    marketValuePurchaseDate - discountPerShare
-  ).toFixed(2);
+  const purchasePricePerShare =
+    marketValuePurchaseDate * (1 - discountPercent / 100);
+  const discountPerShare = marketValuePurchaseDate * (discountPercent / 100);
   const numberOfShares = Math.floor(purchaseAmount / purchasePricePerShare);
-  const totalPurchasePrice = +(numberOfShares * purchasePricePerShare).toFixed(
-    2
-  );
-  const totalDiscount = +(numberOfShares * discountPerShare).toFixed(2);
-  const capitalGainPerShare = +(
-    marketValueSaleDate - purchasePricePerShare
-  ).toFixed(2);
-  const totalCapitalGain = +(numberOfShares * capitalGainPerShare).toFixed(2);
+  const totalPurchasePrice = numberOfShares * purchasePricePerShare;
+  const totalDiscount = numberOfShares * discountPerShare;
+  const capitalGainPerShare = marketValueSaleDate - purchasePricePerShare;
+  const totalCapitalGain = numberOfShares * capitalGainPerShare;
   const amountTaxableAsIncome = totalDiscount;
-  const totalTax = +(amountTaxableAsIncome * (taxRatePercent / 100)).toFixed(2);
-  const totalProfit = +(totalCapitalGain - totalTax).toFixed(2);
+  const totalTax = amountTaxableAsIncome * (taxRatePercent / 100);
+  const totalProfit = totalCapitalGain - totalTax;
 
-  const result = {
+  // Correct Calculation: Percentage Gain/Loss on Investment
+  const percentageGainLossOnInvestment =
+    totalPurchasePrice !== 0 ? (totalProfit / totalPurchasePrice) * 100 : 0;
+
+  return {
     purchasePricePerShare,
     discountPerShare,
     capitalGainPerShare,
@@ -74,7 +71,6 @@ export function calculateESPP(input: ESPPInput): ESPPOutput {
     amountTaxableAsIncome,
     totalTax,
     totalProfit,
+    percentageGainLossOnInvestment,
   };
-
-  return ESPPOutputSchema.parse(result); // Validate the output using Zod
 }
