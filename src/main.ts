@@ -45,45 +45,36 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <form id="esppForm" class="bg-gray-800 p-6 rounded-lg shadow-md">
     <div class="mb-4">
       <label for="marketValuePurchaseDate" class="block text-sm font-medium text-gray-400">Market Value at Purchase Date</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="marketValuePurchaseDate" name="marketValuePurchaseDate" value="${defaultValues.marketValuePurchaseDate.toFixed(
-          2
-        )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
-      </div>
+      <input type="text" id="marketValuePurchaseDate" name="marketValuePurchaseDate" value="${formatCurrency(
+        defaultValues.marketValuePurchaseDate.toFixed(2)
+      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
     
     <div class="mb-4">
       <label for="discountPercent" class="block text-sm font-medium text-gray-400">Discount Percent</label>
-      <input type="text" id="discountPercent" name="discountPercent" value="${defaultValues.discountPercent.toFixed(
-        2
+      <input type="text" id="discountPercent" name="discountPercent" value="${formatPercent(
+        defaultValues.discountPercent.toFixed(2)
       )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
     <div class="mb-4">
       <label for="purchaseAmount" class="block text-sm font-medium text-gray-400">Purchase Amount (in dollars)</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="purchaseAmount" name="purchaseAmount" value="${defaultValues.purchaseAmount.toFixed(
-          2
-        )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
-      </div>
+      <input type="text" id="purchaseAmount" name="purchaseAmount" value="${formatCurrency(
+        defaultValues.purchaseAmount.toFixed(2)
+      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
     <div class="mb-4">
       <label for="marketValueSaleDate" class="block text-sm font-medium text-gray-400">Market Value at Time of Sale</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${defaultValues.marketValueSaleDate.toFixed(
-          2
-        )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
-      </div>
+      <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${formatCurrency(
+        defaultValues.marketValueSaleDate.toFixed(2)
+      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
     <div class="mb-4">
       <label for="taxRatePercent" class="block text-sm font-medium text-gray-400">Tax Rate Percent</label>
-      <input type="text" id="taxRatePercent" name="taxRatePercent" value="${defaultValues.taxRatePercent.toFixed(
-        2
+      <input type="text" id="taxRatePercent" name="taxRatePercent" value="${formatPercent(
+        defaultValues.taxRatePercent.toFixed(2)
       )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
