@@ -1,6 +1,6 @@
-import { ESPPInput, ESPPInputSchema, calculateESPP } from "./lib";
 import "./style.css";
 import { z } from "zod";
+import { ESPPInput, ESPPInputSchema, calculateESPP } from "./lib";
 
 const defaultValues = {
   marketValuePurchaseDate: 4.6,
@@ -10,21 +10,34 @@ const defaultValues = {
   taxRatePercent: 40,
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: string): string {
+  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+  if (isNaN(numericValue)) return value;
   return `$${new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value)}`;
+  }).format(numericValue)}`;
 }
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(2)}%`;
+function formatPercent(value: string): string {
+  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+  if (isNaN(numericValue)) return value;
+  return `${numericValue.toFixed(2)}%`;
+}
+
+function sanitizeInput(value: string, type: "currency" | "percent"): string {
+  if (type === "currency") {
+    return value.replace(/[^0-9.,-]/g, "");
+  } else if (type === "percent") {
+    return value.replace(/[^0-9.-]/g, "");
+  }
+  return value;
 }
 
 function handleNegative(value: number): string {
   return value < 0
-    ? `<span class="text-red-500">${formatCurrency(value)}</span>`
-    : formatCurrency(value);
+    ? `<span class="text-red-500">${formatCurrency(value.toString())}</span>`
+    : formatCurrency(value.toString());
 }
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -34,19 +47,16 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <label for="marketValuePurchaseDate" class="block text-sm font-medium text-gray-400">Market Value at Purchase Date</label>
       <div class="relative">
         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="marketValuePurchaseDate" name="marketValuePurchaseDate" value="${formatCurrency(
-          defaultValues.marketValuePurchaseDate
-        ).replace(
-          "$",
-          ""
+        <input type="text" id="marketValuePurchaseDate" name="marketValuePurchaseDate" value="${defaultValues.marketValuePurchaseDate.toFixed(
+          2
         )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
       </div>
     </div>
     
     <div class="mb-4">
       <label for="discountPercent" class="block text-sm font-medium text-gray-400">Discount Percent</label>
-      <input type="text" id="discountPercent" name="discountPercent" value="${formatPercent(
-        defaultValues.discountPercent
+      <input type="text" id="discountPercent" name="discountPercent" value="${defaultValues.discountPercent.toFixed(
+        2
       )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
@@ -54,11 +64,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <label for="purchaseAmount" class="block text-sm font-medium text-gray-400">Purchase Amount (in dollars)</label>
       <div class="relative">
         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="purchaseAmount" name="purchaseAmount" value="${formatCurrency(
-          defaultValues.purchaseAmount
-        ).replace(
-          "$",
-          ""
+        <input type="text" id="purchaseAmount" name="purchaseAmount" value="${defaultValues.purchaseAmount.toFixed(
+          2
         )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
       </div>
     </div>
@@ -67,19 +74,16 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <label for="marketValueSaleDate" class="block text-sm font-medium text-gray-400">Market Value at Time of Sale</label>
       <div class="relative">
         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">$</span>
-        <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${formatCurrency(
-          defaultValues.marketValueSaleDate
-        ).replace(
-          "$",
-          ""
+        <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${defaultValues.marketValueSaleDate.toFixed(
+          2
         )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2 pl-8" required>
       </div>
     </div>
 
     <div class="mb-4">
       <label for="taxRatePercent" class="block text-sm font-medium text-gray-400">Tax Rate Percent</label>
-      <input type="text" id="taxRatePercent" name="taxRatePercent" value="${formatPercent(
-        defaultValues.taxRatePercent
+      <input type="text" id="taxRatePercent" name="taxRatePercent" value="${defaultValues.taxRatePercent.toFixed(
+        2
       )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
     </div>
 
@@ -92,25 +96,58 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 `;
 
+const inputs = document.querySelectorAll('input[type="text"]');
+inputs.forEach((input) => {
+  input.addEventListener("blur", (e) => {
+    const target = e.target as HTMLInputElement;
+    const inputType = target.name.includes("Percent") ? "percent" : "currency";
+    target.value =
+      inputType === "percent"
+        ? formatPercent(target.value)
+        : formatCurrency(target.value);
+  });
+
+  input.addEventListener("input", (e) => {
+    const target = e.target as HTMLInputElement;
+    const inputType = target.name.includes("Percent") ? "percent" : "currency";
+    target.value = sanitizeInput(target.value, inputType);
+  });
+});
+
 document.getElementById("esppForm")?.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const formData = new FormData(event.target as HTMLFormElement);
   const input: ESPPInput = {
     marketValuePurchaseDate: parseFloat(
-      (formData.get("marketValuePurchaseDate") as string).replace(/,/g, "")
+      sanitizeInput(
+        formData.get("marketValuePurchaseDate") as string,
+        "currency"
+      ).replace(/,/g, "")
     ),
     discountPercent: parseFloat(
-      (formData.get("discountPercent") as string).replace("%", "")
+      sanitizeInput(
+        formData.get("discountPercent") as string,
+        "percent"
+      ).replace("%", "")
     ),
     purchaseAmount: parseFloat(
-      (formData.get("purchaseAmount") as string).replace(/,/g, "")
+      sanitizeInput(
+        formData.get("purchaseAmount") as string,
+        "currency"
+      ).replace(/,/g, "")
     ),
     marketValueSaleDate: parseFloat(
-      (formData.get("marketValueSaleDate") as string).replace(/,/g, "")
+      sanitizeInput(
+        formData.get("marketValueSaleDate") as string,
+        "currency"
+      ).replace(/,/g, "")
     ),
     taxRatePercent: parseFloat(
-      (formData.get("taxRatePercent") as string).replace("%", "")
+      sanitizeInput(
+        formData.get("taxRatePercent") as string,
+        "percent"
+      ).replace("%", "")
     ),
   };
 
@@ -126,15 +163,19 @@ document.getElementById("esppForm")?.addEventListener("submit", (event) => {
         <h3 class="text-lg font-semibold mb-2">Share Information</h3>
         <p>Number of Shares Purchased: ${result.numberOfShares}</p>
         <p>Purchase Price per Share: ${formatCurrency(
-          result.purchasePricePerShare
+          result.purchasePricePerShare.toString()
         )}</p>
-        <p>Discount per Share: ${formatCurrency(result.discountPerShare)}</p>
+        <p>Discount per Share: ${formatCurrency(
+          result.discountPerShare.toString()
+        )}</p>
         
         <h3 class="text-lg font-semibold mt-4 mb-2">Financial Impact</h3>
         <p>Total Purchase Price: ${formatCurrency(
-          result.totalPurchasePrice
+          result.totalPurchasePrice.toString()
         )}</p>
-        <p>Total Discount: ${formatCurrency(result.totalDiscount)}</p>
+        <p>Total Discount: ${formatCurrency(
+          result.totalDiscount.toString()
+        )}</p>
         
         <h3 class="text-lg font-semibold mt-4 mb-2">Gains/Losses</h3>
         <p>Capital Gain/Loss per Share: ${handleNegative(
@@ -146,9 +187,9 @@ document.getElementById("esppForm")?.addEventListener("submit", (event) => {
         
         <h3 class="text-lg font-semibold mt-4 mb-2">Tax Implications</h3>
         <p>Amount Taxable as Income (Total Discount): ${formatCurrency(
-          result.amountTaxableAsIncome
+          result.amountTaxableAsIncome.toString()
         )}</p>
-        <p>Total Tax: ${formatCurrency(result.totalTax)}</p>
+        <p>Total Tax: ${formatCurrency(result.totalTax.toString())}</p>
         
         <h3 class="text-lg font-semibold mt-4 mb-2">Final Outcome</h3>
         <p class="font-bold">Total Profit/Loss: ${handleNegative(
