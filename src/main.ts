@@ -8,20 +8,27 @@ const defaultValues = {
   purchaseAmount: 1000,
   marketValueSaleDate: 4.6,
   taxRatePercent: 40,
+  stockPercentageGainLoss: 0,
 };
 
-function formatCurrency(value: string): string {
-  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
-  if (isNaN(numericValue)) return value;
+function formatCurrency(value: string | number): string {
+  const numericValue =
+    typeof value === "string"
+      ? parseFloat(value.replace(/[^0-9.-]+/g, ""))
+      : value;
+  if (isNaN(numericValue)) return value.toString();
   return `$${new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numericValue)}`;
 }
 
-function formatPercent(value: string): string {
-  const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
-  if (isNaN(numericValue)) return value;
+function formatPercent(value: string | number): string {
+  const numericValue =
+    typeof value === "string"
+      ? parseFloat(value.replace(/[^0-9.-]+/g, ""))
+      : value;
+  if (isNaN(numericValue)) return value.toString();
   return `${numericValue.toFixed(2)}%`;
 }
 
@@ -38,6 +45,20 @@ function handleNegative(value: number): string {
   return value < 0
     ? `<span class="text-red-500">${formatCurrency(value.toString())}</span>`
     : formatCurrency(value.toString());
+}
+
+function calculateMarketValueSaleDate(
+  purchaseValue: number,
+  percentageGainLoss: number
+): number {
+  return purchaseValue * (1 + percentageGainLoss / 100);
+}
+
+function calculatePercentageGainLoss(
+  purchaseValue: number,
+  saleValue: number
+): number {
+  return ((saleValue - purchaseValue) / purchaseValue) * 100;
 }
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
@@ -65,6 +86,13 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </div>
 
     <div class="mb-4">
+      <label for="stockPercentageGainLoss" class="block text-sm font-medium text-gray-400">Stock Percentage Gain/Loss</label>
+      <input type="text" id="stockPercentageGainLoss" name="stockPercentageGainLoss" value="${formatPercent(
+        defaultValues.stockPercentageGainLoss.toFixed(2)
+      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
+    </div>
+
+    <div class="mb-4">
       <label for="marketValueSaleDate" class="block text-sm font-medium text-gray-400">Market Value at Time of Sale</label>
       <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${formatCurrency(
         defaultValues.marketValueSaleDate.toFixed(2)
@@ -87,7 +115,18 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 `;
 
+const marketValuePurchaseDateInput = document.getElementById(
+  "marketValuePurchaseDate"
+) as HTMLInputElement;
+const marketValueSaleDateInput = document.getElementById(
+  "marketValueSaleDate"
+) as HTMLInputElement;
+const stockPercentageGainLossInput = document.getElementById(
+  "stockPercentageGainLoss"
+) as HTMLInputElement;
+
 const inputs = document.querySelectorAll('input[type="text"]');
+
 inputs.forEach((input) => {
   input.addEventListener("blur", (e) => {
     const target = e.target as HTMLInputElement;
@@ -102,6 +141,38 @@ inputs.forEach((input) => {
     const target = e.target as HTMLInputElement;
     const inputType = target.name.includes("Percent") ? "percent" : "currency";
     target.value = sanitizeInput(target.value, inputType);
+
+    if (target === stockPercentageGainLossInput) {
+      const purchaseValue = parseFloat(
+        marketValuePurchaseDateInput.value.replace(/[^0-9.-]+/g, "")
+      );
+      const percentageGainLoss = parseFloat(
+        target.value.replace(/[^0-9.-]+/g, "")
+      );
+      if (!isNaN(purchaseValue) && !isNaN(percentageGainLoss)) {
+        const updatedSaleValue = calculateMarketValueSaleDate(
+          purchaseValue,
+          percentageGainLoss
+        );
+        marketValueSaleDateInput.value = formatCurrency(
+          updatedSaleValue.toFixed(2)
+        );
+      }
+    } else if (target === marketValueSaleDateInput) {
+      const purchaseValue = parseFloat(
+        marketValuePurchaseDateInput.value.replace(/[^0-9.-]+/g, "")
+      );
+      const saleValue = parseFloat(target.value.replace(/[^0-9.-]+/g, ""));
+      if (!isNaN(purchaseValue) && !isNaN(saleValue)) {
+        const updatedPercentageGainLoss = calculatePercentageGainLoss(
+          purchaseValue,
+          saleValue
+        );
+        stockPercentageGainLossInput.value = formatPercent(
+          updatedPercentageGainLoss.toFixed(2)
+        );
+      }
+    }
   });
 });
 
