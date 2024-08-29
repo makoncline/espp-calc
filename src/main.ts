@@ -310,6 +310,8 @@ document.getElementById("esppForm")?.addEventListener("submit", (event) => {
           )}</p>
           
           <h3 class="text-lg font-semibold mt-4 mb-2">Gains/Losses</h3>
+          <p>Gain/Loss per Share: ${handleNegative(result.gainPerShare)}</p>
+          <p>Total Gain/Loss: ${handleNegative(result.totalGain)}</p>
           <p>Capital Gain/Loss per Share: ${handleNegative(
             result.capitalGainPerShare
           )}</p>

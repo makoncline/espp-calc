@@ -1,3 +1,4 @@
+import { g } from "vitest/dist/chunks/suite.CcK46U-P.js";
 import { z } from "zod";
 
 export const ESPPInputSchema = z.object({
@@ -19,10 +20,12 @@ export const ESPPInputSchema = z.object({
 export const ESPPOutputSchema = z.object({
   purchasePricePerShare: z.number(),
   discountPerShare: z.number(),
+  gainPerShare: z.number(),
   capitalGainPerShare: z.number(),
   numberOfShares: z.number().int(),
   totalPurchasePrice: z.number(),
   totalDiscount: z.number(),
+  totalGain: z.number(),
   totalCapitalGain: z.number(),
   amountTaxableAsIncome: z.number(),
   totalTax: z.number(),
@@ -32,7 +35,6 @@ export const ESPPOutputSchema = z.object({
 
 export type ESPPInput = z.infer<typeof ESPPInputSchema>;
 export type ESPPOutput = z.infer<typeof ESPPOutputSchema>;
-
 export function calculateESPP(input: ESPPInput): ESPPOutput {
   ESPPInputSchema.parse(input); // Validate the input using Zod
 
@@ -44,31 +46,68 @@ export function calculateESPP(input: ESPPInput): ESPPOutput {
     taxRatePercent,
   } = input;
 
-  const purchasePricePerShare =
-    marketValuePurchaseDate * (1 - discountPercent / 100);
-  const discountPerShare = marketValuePurchaseDate * (discountPercent / 100);
+  const purchasePricePerShare = parseFloat(
+    (marketValuePurchaseDate * (1 - discountPercent / 100)).toFixed(2)
+  );
   const numberOfShares = Math.floor(purchaseAmount / purchasePricePerShare);
-  const totalPurchasePrice = numberOfShares * purchasePricePerShare;
-  const totalDiscount = numberOfShares * discountPerShare;
-  const capitalGainPerShare = marketValueSaleDate - purchasePricePerShare;
-  const totalCapitalGain = numberOfShares * capitalGainPerShare;
+  const totalPurchasePrice = parseFloat(
+    (numberOfShares * purchasePricePerShare).toFixed(2)
+  );
+  const discountPerShare = parseFloat(
+    (marketValuePurchaseDate - purchasePricePerShare).toFixed(2)
+  );
+  const totalDiscount = parseFloat(
+    (discountPerShare * numberOfShares).toFixed(2)
+  );
+  const gainPerShare = parseFloat(
+    (marketValueSaleDate - purchasePricePerShare).toFixed(2)
+  );
+  const totalGain = parseFloat((gainPerShare * numberOfShares).toFixed(2));
+  const capitalGainPerShare = parseFloat(
+    (marketValueSaleDate - marketValuePurchaseDate).toFixed(2)
+  );
+  const totalCapitalGain = parseFloat(
+    (capitalGainPerShare * numberOfShares).toFixed(2)
+  );
   const amountTaxableAsIncome = totalDiscount;
-  const totalTax = amountTaxableAsIncome * (taxRatePercent / 100);
-  const totalProfit = totalCapitalGain - totalTax;
+  const totalTax = parseFloat(
+    ((amountTaxableAsIncome * taxRatePercent) / 100).toFixed(2)
+  );
+  const totalProfit = parseFloat((totalGain - totalTax).toFixed(2));
+  const percentageGainLossOnInvestment = parseFloat(
+    ((totalProfit / totalPurchasePrice) * 100).toFixed(2)
+  );
 
-  // Correct Calculation: Percentage Gain/Loss on Investment
-  const percentageGainLossOnInvestment =
-    totalPurchasePrice !== 0 ? (totalProfit / totalPurchasePrice) * 100 : 0;
+  console.log(
+    { ...input },
+    {
+      purchasePricePerShare,
+      discountPerShare,
+      gainPerShare,
+      capitalGainPerShare,
+      numberOfShares,
+      totalPurchasePrice,
+      totalDiscount,
+      totalGain,
+      totalCapitalGain,
+      amountTaxableAsIncome,
+      totalTax,
+      totalProfit,
+      percentageGainLossOnInvestment,
+    }
+  );
 
   return {
     purchasePricePerShare,
     discountPerShare,
+    gainPerShare,
     capitalGainPerShare,
     numberOfShares,
     totalPurchasePrice,
     totalDiscount,
+    totalGain,
     totalCapitalGain,
-    amountTaxableAsIncome,
+    amountTaxableAsIncome: parseFloat(amountTaxableAsIncome.toFixed(2)),
     totalTax,
     totalProfit,
     percentageGainLossOnInvestment,
