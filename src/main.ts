@@ -41,10 +41,14 @@ function sanitizeInput(value: string, type: "currency" | "percent"): string {
   return value;
 }
 
-function handleNegative(value: number): string {
+function handleNegative(value: number, isCurrency: boolean = true): string {
+  const formattedValue = isCurrency
+    ? formatCurrency(value.toString())
+    : formatPercent(value.toString());
+
   return value < 0
-    ? `<span class="text-red-500">${formatCurrency(value.toString())}</span>`
-    : formatCurrency(value.toString());
+    ? `<span class="text-red-500">${formattedValue}</span>`
+    : formattedValue;
 }
 
 function calculateMarketValueSaleDate(
@@ -61,8 +65,25 @@ function calculatePercentageGainLoss(
   return ((saleValue - purchaseValue) / purchaseValue) * 100;
 }
 
+function clearResults() {
+  const resultsDiv = document.getElementById("results");
+  const resultsContent = document.getElementById("resultsContent");
+
+  if (resultsDiv) {
+    resultsDiv.classList.add("invisible", "opacity-0");
+    resultsDiv.classList.remove("opacity-100");
+  }
+
+  if (resultsContent) {
+    resultsContent.innerHTML = "";
+  }
+}
+
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <h1 class="text-2xl font-bold mb-4">ESPP Calculator</h1>
+    <p class="text-sm text-gray-400 mb-4">
+    This tool applies to a person in the US, with a Section 423 qualified plan, selling within the disqualified disposition time frame (i.e., within two years from the offering date and one year from the purchase date). This is not financial advice. 
+  </p>
   <form id="esppForm" class="bg-gray-800 p-6 rounded-lg shadow-md">
     <div class="mb-4">
       <label for="marketValuePurchaseDate" class="block text-sm font-medium text-gray-400">Market Value at Purchase Date</label>
@@ -86,17 +107,31 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </div>
 
     <div class="mb-4">
-      <label for="stockPercentageGainLoss" class="block text-sm font-medium text-gray-400">Stock Percentage Gain/Loss</label>
-      <input type="text" id="stockPercentageGainLoss" name="stockPercentageGainLoss" value="${formatPercent(
-        defaultValues.stockPercentageGainLoss.toFixed(2)
-      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
-    </div>
-
-    <div class="mb-4">
       <label for="marketValueSaleDate" class="block text-sm font-medium text-gray-400">Market Value at Time of Sale</label>
       <input type="text" id="marketValueSaleDate" name="marketValueSaleDate" value="${formatCurrency(
         defaultValues.marketValueSaleDate.toFixed(2)
       )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
+    </div>
+
+
+    <div class="mb-4">
+      <label for="stockPercentageGainLoss" class="block text-sm font-medium text-gray-400">Market Value Gain/Loss Percentage</label>
+      <input type="text" id="stockPercentageGainLoss" name="stockPercentageGainLoss" value="${formatPercent(
+        defaultValues.stockPercentageGainLoss.toFixed(2)
+      )}" class="mt-1 block w-full bg-gray-700 text-gray-100 border border-gray-600 rounded-md p-2" required>
+    </div>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-400 mb-2">Market Value Gain/loss Scenarios</label>
+      <div class="flex space-x-2 justify-center">
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="-15">-15%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="-10">-10%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="-3">-3%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="0">0%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="3">+3%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="10">+10%</button>
+        <button type="button" class="scenario-button bg-gray-700 text-gray-100 rounded-md p-2" data-percentage="15">+15%</button>
+      </div>
     </div>
 
     <div class="mb-4">
@@ -109,12 +144,13 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Calculate</button>
   </form>
 
-  <div id="results" class="mt-6 bg-gray-800 p-6 rounded-lg shadow-md hidden">
+  <div id="results" class="mt-6 bg-gray-800 p-6 rounded-lg shadow-md invisible opacity-0 transition-opacity duration-300">
     <h2 class="text-xl font-bold mb-4 text-gray-200">Results</h2>
     <div id="resultsContent" class="text-left"></div>
   </div>
 `;
 
+// Existing input handling
 const marketValuePurchaseDateInput = document.getElementById(
   "marketValuePurchaseDate"
 ) as HTMLInputElement;
@@ -128,6 +164,9 @@ const stockPercentageGainLossInput = document.getElementById(
 const inputs = document.querySelectorAll('input[type="text"]');
 
 inputs.forEach((input) => {
+  input.addEventListener("input", () => {
+    clearResults();
+  });
   input.addEventListener("blur", (e) => {
     const target = e.target as HTMLInputElement;
     const inputType = target.name.includes("Percent") ? "percent" : "currency";
@@ -176,6 +215,37 @@ inputs.forEach((input) => {
   });
 });
 
+// New Scenario Button Handling
+const scenarioButtons = document.querySelectorAll(".scenario-button");
+
+scenarioButtons.forEach((button) => {
+  button.addEventListener("click", (e) => {
+    const target = e.target as HTMLButtonElement;
+    const scenarioPercentage = parseFloat(
+      target.getAttribute("data-percentage") || "0"
+    );
+    const purchaseValue = parseFloat(
+      marketValuePurchaseDateInput.value.replace(/[^0-9.-]+/g, "")
+    );
+
+    if (!isNaN(purchaseValue)) {
+      clearResults(); // Clear the results when a scenario button is clicked
+
+      const updatedSaleValue = calculateMarketValueSaleDate(
+        purchaseValue,
+        scenarioPercentage
+      );
+      marketValueSaleDateInput.value = formatCurrency(
+        updatedSaleValue.toFixed(2)
+      );
+
+      // Update stock percentage gain/loss field
+      stockPercentageGainLossInput.value = formatPercent(scenarioPercentage);
+    }
+  });
+});
+
+// Existing form submission handling
 document.getElementById("esppForm")?.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -222,49 +292,51 @@ document.getElementById("esppForm")?.addEventListener("submit", (event) => {
 
     if (resultsContent) {
       resultsContent.innerHTML = `
-        <h3 class="text-lg font-semibold mb-2">Share Information</h3>
-        <p>Number of Shares Purchased: ${result.numberOfShares}</p>
-        <p>Purchase Price per Share: ${formatCurrency(
-          result.purchasePricePerShare.toString()
-        )}</p>
-        <p>Discount per Share: ${formatCurrency(
-          result.discountPerShare.toString()
-        )}</p>
-        
-        <h3 class="text-lg font-semibold mt-4 mb-2">Financial Impact</h3>
-        <p>Total Purchase Price: ${formatCurrency(
-          result.totalPurchasePrice.toString()
-        )}</p>
-        <p>Total Discount: ${formatCurrency(
-          result.totalDiscount.toString()
-        )}</p>
-        
-        <h3 class="text-lg font-semibold mt-4 mb-2">Gains/Losses</h3>
-        <p>Capital Gain/Loss per Share: ${handleNegative(
-          result.capitalGainPerShare
-        )}</p>
-        <p>Total Capital Gain/Loss: ${handleNegative(
-          result.totalCapitalGain
-        )}</p>
-        
-        <h3 class="text-lg font-semibold mt-4 mb-2">Tax Implications</h3>
-        <p>Amount Taxable as Income (Total Discount): ${formatCurrency(
-          result.amountTaxableAsIncome.toString()
-        )}</p>
-        <p>Total Tax: ${formatCurrency(result.totalTax.toString())}</p>
-        
-        <h3 class="text-lg font-semibold mt-4 mb-2">Final Outcome</h3>
-        <p class="font-bold">Total Profit/Loss: ${handleNegative(
-          result.totalProfit
-        )}</p>
-        <p class="font-bold">Percentage Gain/Loss on Investment: ${handleNegative(
-          result.percentageGainLossOnInvestment
-        )}%</p>
-`;
+          <h3 class="text-lg font-semibold mb-2">Share Information</h3>
+          <p>Number of Shares Purchased: ${result.numberOfShares}</p>
+          <p>Purchase Price per Share: ${formatCurrency(
+            result.purchasePricePerShare.toString()
+          )}</p>
+          <p>Discount per Share: ${formatCurrency(
+            result.discountPerShare.toString()
+          )}</p>
+          
+          <h3 class="text-lg font-semibold mt-4 mb-2">Financial Impact</h3>
+          <p>Total Purchase Price: ${formatCurrency(
+            result.totalPurchasePrice.toString()
+          )}</p>
+          <p>Total Discount: ${formatCurrency(
+            result.totalDiscount.toString()
+          )}</p>
+          
+          <h3 class="text-lg font-semibold mt-4 mb-2">Gains/Losses</h3>
+          <p>Capital Gain/Loss per Share: ${handleNegative(
+            result.capitalGainPerShare
+          )}</p>
+          <p>Total Capital Gain/Loss: ${handleNegative(
+            result.totalCapitalGain
+          )}</p>
+          
+          <h3 class="text-lg font-semibold mt-4 mb-2">Tax Implications</h3>
+          <p>Amount Taxable as Income (Total Discount): ${formatCurrency(
+            result.amountTaxableAsIncome.toString()
+          )}</p>
+          <p>Total Tax: ${formatCurrency(result.totalTax.toString())}</p>
+          
+          <h3 class="text-lg font-semibold mt-4 mb-2">Final Outcome</h3>
+          <p class="font-bold">Total Profit/Loss: ${handleNegative(
+            result.totalProfit
+          )}</p>
+          <p class="font-bold">Percentage Gain/Loss on Investment: ${handleNegative(
+            result.percentageGainLossOnInvestment,
+            false
+          )}</p>
+        `;
     }
 
     if (resultsDiv) {
-      resultsDiv.classList.remove("hidden");
+      resultsDiv.classList.remove("invisible", "opacity-0");
+      resultsDiv.classList.add("opacity-100");
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
